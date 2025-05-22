@@ -118,7 +118,3 @@ The API includes comprehensive error handling for:
 - Database connection issues
 - Missing required parameters
 - Invalid coordinates
-
-## Distance Calculation
-
-The distance between schools is calculated using the Haversine formula, which provides accurate results for geographical coordinates. 

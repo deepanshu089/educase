@@ -8,9 +8,14 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: false,  // Changed this line
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 }).promise();
+
+// Add connection error handling
+pool.on('error', (err) => {
+  console.error('Database connection error:', err);
+});
 
 module.exports = pool;

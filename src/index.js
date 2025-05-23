@@ -190,3 +190,11 @@ app.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
   await initializeDatabase();
 });
+
+// Add after your middleware setup
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});

@@ -12,11 +12,21 @@ app.use(cors());
 app.use(express.json());
 
 // Add this root route
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'School Management API is running'
-  });
+// After your middleware and before other routes
+app.get('/', async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      message: 'School Management API is running',
+      endpoints: {
+        root: '/',
+        addSchool: '/addSchool',
+        listSchools: '/listSchools'
+      }
+    });
+  } catch (error) {
+    handleError(res, error, 'Error in root route');
+  }
 });
 
 // Custom error handler

@@ -11,24 +11,67 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Custom error handler
+const handleError = (res, error, message = 'An error occurred') => {
+  console.error(`${message}:`, error);
+  res.status(500).json({
+    success: false,
+    message,
+    error: error.message
+  });
+};
+
+// Helper function to validate coordinates
+const isValidCoordinates = (lat, lng) => {
+  return !isNaN(lat) && !isNaN(lng) && 
+         lat >= -90 && lat <= 90 && 
+         lng >= -180 && lng <= 180;
+};
+
+// Helper function to format school data
+const formatSchoolData = (school) => ({
+  id: school.id,
+  name: school.name,
+  address: school.address,
+  latitude: parseFloat(school.latitude.toFixed(6)),
+  longitude: parseFloat(school.longitude.toFixed(6)),
+  distance: parseFloat(school.distance.toFixed(2)),
+  created_at: school.created_at
+});
+
 // Validation middleware
 const validateSchool = [
-  body('name').notEmpty().withMessage('School name is required'),
-  body('address').notEmpty().withMessage('Address is required'),
-  body('latitude').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
-  body('longitude').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude')
+  body('name')
+    .notEmpty()
+    .withMessage('School name is required')
+    .trim(),
+  body('address')
+    .notEmpty()
+    .withMessage('Address is required')
+    .trim(),
+  body('latitude')
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('Invalid latitude'),
+  body('longitude')
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Invalid longitude')
 ];
 
 // Add School API
 app.post('/addSchool', validateSchool, async (req, res) => {
   try {
+    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
     }
 
     const { name, address, latitude, longitude } = req.body;
     
+    // Insert school data into database
     const [result] = await pool.execute(
       'INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)',
       [name, address, latitude, longitude]
@@ -40,12 +83,7 @@ app.post('/addSchool', validateSchool, async (req, res) => {
       schoolId: result.insertId
     });
   } catch (error) {
-    console.error('Error adding school:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error adding school',
-      error: error.message
-    });
+    handleError(res, error, 'Error adding school');
   }
 });
 
@@ -54,6 +92,7 @@ app.get('/listSchools', async (req, res) => {
   try {
     const { latitude, longitude } = req.query;
 
+    // Validate required parameters
     if (!latitude || !longitude) {
       return res.status(400).json({
         success: false,
@@ -61,21 +100,18 @@ app.get('/listSchools', async (req, res) => {
       });
     }
 
-    // Convert coordinates to numbers
+    // Parse and validate coordinates
     const userLat = parseFloat(latitude);
     const userLng = parseFloat(longitude);
 
-    // Validate coordinates
-    if (isNaN(userLat) || isNaN(userLng) || 
-        userLat < -90 || userLat > 90 || 
-        userLng < -180 || userLng > 180) {
+    if (!isValidCoordinates(userLat, userLng)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid coordinates provided'
       });
     }
 
-    // Get all schools and calculate distance using Haversine formula
+    // Query schools with distance calculation using Haversine formula
     const [schools] = await pool.execute(
       `SELECT *,
         (
@@ -93,16 +129,8 @@ app.get('/listSchools', async (req, res) => {
       [userLat, userLng, userLat]
     );
 
-    // Format the response
-    const formattedSchools = schools.map(school => ({
-      id: school.id,
-      name: school.name,
-      address: school.address,
-      latitude: parseFloat(school.latitude.toFixed(6)),
-      longitude: parseFloat(school.longitude.toFixed(6)),
-      distance: parseFloat(school.distance.toFixed(2)),
-      created_at: school.created_at
-    }));
+    // Format and return response
+    const formattedSchools = schools.map(formatSchoolData);
 
     res.json({
       success: true,
@@ -115,12 +143,7 @@ app.get('/listSchools', async (req, res) => {
       distanceUnit: "kilometers"
     });
   } catch (error) {
-    console.error('Error fetching schools:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching schools',
-      error: error.message
-    });
+    handleError(res, error, 'Error fetching schools');
   }
 });
 
@@ -140,6 +163,7 @@ async function initializeDatabase() {
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
+    process.exit(1); // Exit if database initialization fails
   }
 }
 

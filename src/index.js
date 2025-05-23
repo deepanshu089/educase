@@ -163,12 +163,12 @@ async function initializeDatabase() {
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
-    process.exit(1); // Exit if database initialization fails
+    process.exit(1);
   }
 }
 
-// Start server
-app.listen(port, () => {
+// Make sure to call this when server starts
+app.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
-  initializeDatabase();
-}); 
+  await initializeDatabase();
+});

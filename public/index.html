@@ -107,6 +107,19 @@
     <script>
         const API_URL = 'https://school-educase.vercel.app';
 
+        // Calculate distance using Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
         async function addSchool() {
             const addStatus = document.getElementById('addStatus');
             try {
@@ -147,21 +160,29 @@
         async function findSchools() {
             const schoolsList = document.getElementById('schoolsList');
             try {
-                const lat = document.getElementById('searchLat').value;
-                const lng = document.getElementById('searchLng').value;
+                const userLat = parseFloat(document.getElementById('searchLat').value);
+                const userLng = parseFloat(document.getElementById('searchLng').value);
 
-                const response = await fetch(`${API_URL}/listSchools?latitude=${lat}&longitude=${lng}`);
+                const response = await fetch(`${API_URL}/listSchools?latitude=${userLat}&longitude=${userLng}`);
                 const result = await response.json();
 
                 schoolsList.innerHTML = '';
                 
                 if (result.success && result.schools.length > 0) {
-                    result.schools.forEach(school => {
+                    // Sort schools by distance
+                    const sortedSchools = result.schools.sort((a, b) => {
+                        const distA = calculateDistance(userLat, userLng, a.latitude, a.longitude);
+                        const distB = calculateDistance(userLat, userLng, b.latitude, b.longitude);
+                        return distA - distB;
+                    });
+
+                    sortedSchools.forEach(school => {
+                        const distance = calculateDistance(userLat, userLng, school.latitude, school.longitude);
                         schoolsList.innerHTML += `
                             <div class="school-card">
                                 <h3>${school.name}</h3>
                                 <p><strong>Address:</strong> ${school.address}</p>
-                                <p><strong>Distance:</strong> ${school.distance.toFixed(2)} km</p>
+                                <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
                                 <p><strong>Location:</strong> ${school.latitude}, ${school.longitude}</p>
                             </div>
                         `;

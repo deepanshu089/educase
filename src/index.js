@@ -89,11 +89,20 @@ app.post('/addSchool', validateSchool, async (req, res) => {
 
     const { name, address, latitude, longitude } = req.body;
     
+    console.log('Attempting to add school with data:', {
+      name,
+      address,
+      latitude,
+      longitude
+    });
+
     // Insert school data into database
     const [result] = await pool.execute(
       'INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)',
       [name, address, latitude, longitude]
     );
+
+    console.log('School added successfully:', result);
 
     res.status(201).json({
       success: true,
@@ -101,6 +110,13 @@ app.post('/addSchool', validateSchool, async (req, res) => {
       schoolId: result.insertId
     });
   } catch (error) {
+    console.error('Detailed error in addSchool:', {
+      message: error.message,
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage
+    });
     handleError(res, error, 'Error adding school');
   }
 });
